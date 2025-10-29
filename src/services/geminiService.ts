@@ -12,7 +12,7 @@ import {
 } from '../data/mockData';
 import { mockUsers } from '../data/users';
 
-// Fix: Switched from import.meta.env.VITE_API_KEY to process.env.API_KEY to adhere to the coding guidelines.
+// Fix: Switched from import.meta.env.VITE_GEMINI_API_KEY to process.env.API_KEY to adhere to the coding guidelines.
 const API_KEY = process.env.API_KEY;
 
 if (!API_KEY) {
@@ -27,95 +27,8 @@ const ai = new GoogleGenAI({ apiKey: API_KEY });
 let absenceRequests: AbsenceRequest[] = initialAbsenceRequests;
 let nextAbsenceId = 1;
 
-
-interface SubstituteResult {
-    substituteTeacherName: string;
-    reasoning: string;
-}
-
-export const findSubstitute = async (
-    absentTeacher: Teacher,
-    day: string,
-    period: number,
-    timetable: TimetableData,
-    allTeachers: Teacher[]
-): Promise<SubstituteResult> => {
-
-    const availableTeachers = allTeachers.filter(teacher => {
-        if (teacher.id === absentTeacher.id) return false;
-        
-        const teachersWithClassesThisPeriod = Object.values(timetable)
-            .flatMap(daySchedule => daySchedule[period - 1])
-            .map(s => s.teacher)
-            .filter(Boolean);
-            
-        return !teachersWithClassesThisPeriod.includes(teacher.name);
-    }).map(t => ({ name: t.name, subjects: t.subjects }));
-
-
-    if (availableTeachers.length === 0) {
-        throw new Error("No teachers are available for substitution at this time.");
-    }
-    
-    const prompt = `
-You are an intelligent timetable management assistant for a school.
-Your task is to find a suitable substitute teacher for an absent colleague.
-
-CONTEXT:
-- Absent Teacher: ${absentTeacher.name}
-- Subject of the class: ${timetable[day][period - 1].subject}
-- Day and Period of Absence: ${day}, Period ${period}
-
-LIST OF AVAILABLE TEACHERS (who have a free period now):
-${JSON.stringify(availableTeachers, null, 2)}
-
-YOUR TASK:
-Analyze the list of available teachers and find the best substitute.
-Prioritize teachers based on the following criteria:
-1.  **Primary Match:** The substitute teacher's subjects include the subject of the class (${timetable[day][period - 1].subject}).
-2.  **Secondary Match:** If no primary match is found, select any other available teacher.
-
-Provide a brief reasoning for your choice.
-Respond with ONLY a JSON object that matches the required schema.
-`;
-
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    substituteTeacherName: {
-                        type: Type.STRING,
-                        description: 'The full name of the chosen substitute teacher.',
-                    },
-                    reasoning: {
-                        type: Type.STRING,
-                        description: 'A brief explanation for why this teacher was chosen.'
-                    }
-                },
-                required: ['substituteTeacherName', 'reasoning'],
-            },
-        }
-    });
-    
-    const jsonText = (response.text || '').trim();
-    try {
-        const parsedResult = JSON.parse(jsonText);
-        return parsedResult as SubstituteResult;
-    } catch (e) {
-        console.error("Failed to parse Gemini response:", jsonText);
-        throw new Error("Received an invalid response from the AI assistant.");
-    }
-};
-
 // --- API Simulation Layer ---
-// In a real application, this would be in a separate file (e.g., apiService.ts)
-// and would make actual fetch() calls to a backend server connected to a MySQL database.
-
-const SIMULATED_DELAY = 500; // ms
+const SIMULATED_DELAY = 300; // ms
 
 export const apiGetInitialData = async (): Promise<any> => {
     console.log("API_SIM: Fetching initial data...");
@@ -156,8 +69,7 @@ export const apiUpdateTimetable = async (newTimetable: TimetableData): Promise<T
     console.log("API_SIM: Updating timetable...");
     return new Promise((resolve) => {
         setTimeout(() => {
-            // In a real app, the server would validate and save this to the DB.
-            // Here we just return it to simulate a successful update.
+            Object.assign(initialTimetableData, newTimetable);
             console.log("API_SIM: Timetable updated successfully.");
             resolve(newTimetable);
         }, SIMULATED_DELAY);
@@ -171,11 +83,57 @@ export const apiCreateAbsenceRequest = async (request: Omit<AbsenceRequest, 'id'
                 ...request,
                 id: nextAbsenceId++,
                 timestamp: new Date(),
+                // FIX: Corrected status to match the defined type 'AbsenceRequestStatus'.
                 status: 'PENDING_HOD_ACTION',
             };
             absenceRequests.push(newRequest);
             console.log("API_SIM: Created new absence request", newRequest);
             resolve(newRequest);
+        }, SIMULATED_DELAY);
+    });
+};
+
+export const apiReportAbsenceForTomorrow = async (teacher: User, reason: string): Promise<AbsenceRequest[]> => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (new Date().getHours() >= 9) {
+                return reject(new Error("Absence reporting for tomorrow is only available before 9:00 AM."));
+            }
+
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const dayIndex = tomorrow.getDay() - 1; 
+
+            if (dayIndex < 0 || dayIndex > 4) {
+                 return reject(new Error("Cannot report absence for a weekend."));
+            }
+            const tomorrowDay = daysOfWeek[dayIndex];
+
+            const teacherClasses = initialTimetableData[tomorrowDay]
+                .map((slot, index) => ({ slot, period: index + 1 }))
+                .filter(({ slot }) => slot.teacher === teacher.name);
+            
+            if (teacherClasses.length === 0) {
+                return reject(new Error(`You have no classes scheduled for tomorrow, ${tomorrowDay}.`));
+            }
+
+            const newRequests: AbsenceRequest[] = teacherClasses.map(({ slot, period }) => ({
+                id: nextAbsenceId++,
+                absentTeacherId: teacher.teacherId!,
+                absentTeacherName: teacher.name,
+                day: tomorrowDay,
+                period: period,
+                slot: slot,
+                // FIX: Corrected status to match the defined type 'AbsenceRequestStatus'.
+                status: 'PENDING_HOD_ACTION',
+                timestamp: new Date(),
+                reasoning: reason,
+            }));
+
+            absenceRequests.push(...newRequests);
+            console.log("API_SIM: Created new absence requests for tomorrow", newRequests);
+            resolve(newRequests);
+
         }, SIMULATED_DELAY);
     });
 };

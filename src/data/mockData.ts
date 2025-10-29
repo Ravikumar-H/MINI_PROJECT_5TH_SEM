@@ -1,4 +1,3 @@
-
 import { Teacher, TimetableData, AbsenceRequest } from '../types';
 
 export const initialTeachers: Teacher[] = [
@@ -58,6 +57,7 @@ const generateTimetable = (): TimetableData => {
             const randomClassIndex = Math.floor(Math.random() * classes.length);
             const randomAssignmentIndex = Math.floor(Math.random() * assignments.length);
             
+            // Make some periods free
             if (Math.random() < 0.2) {
                 data[day].push({
                     class: 'Free',
@@ -74,12 +74,13 @@ const generateTimetable = (): TimetableData => {
         });
     });
 
+    // Ensure some predictable slots for testing
     data['Monday'][0] = { class: '10-A', subject: 'Mathematics', teacher: 'Mr. John Smith' };
     data['Monday'][1] = { class: '10-B', subject: 'Physics', teacher: 'Ms. Emily Jones' };
     data['Tuesday'][2] = { class: '11-A', subject: 'History', teacher: 'Mr. David Williams' };
+    data['Friday'][4] = { class: '12-B', subject: 'Computer Science', teacher: 'Mr. Robert Taylor' };
 
     return data;
 };
-
 
 export const initialTimetableData: TimetableData = generateTimetable();

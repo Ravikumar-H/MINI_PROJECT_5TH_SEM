@@ -8,7 +8,7 @@ import LoadingSpinner from './LoadingSpinner';
 interface AbsenceManagerProps {
     teachers: Teacher[];
     timetable: TimetableData;
-    onReportAbsence: (teacherName: string, day: string, period: number) => void;
+    onReportAbsence: (teacherName: string, day: string, period: number, reason: string) => void;
     isLoading: boolean;
     user: User;
 }
@@ -17,6 +17,7 @@ const AbsenceManager: React.FC<AbsenceManagerProps> = ({ teachers, timetable, on
     const [selectedTeacher, setSelectedTeacher] = useState<string>('');
     const [selectedDay, setSelectedDay] = useState<string>(daysOfWeek[0]);
     const [selectedPeriod, setSelectedPeriod] = useState<number>(periods[0]);
+    const [reason, setReason] = useState('');
 
     // If the user is a teacher, automatically select them.
     useEffect(() => {
@@ -38,7 +39,8 @@ const AbsenceManager: React.FC<AbsenceManagerProps> = ({ teachers, timetable, on
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedTeacher && selectedDay && selectedPeriod) {
-            onReportAbsence(selectedTeacher, selectedDay, selectedPeriod);
+            onReportAbsence(selectedTeacher, selectedDay, selectedPeriod, reason);
+            setReason('');
         }
     };
     
@@ -106,6 +108,18 @@ const AbsenceManager: React.FC<AbsenceManagerProps> = ({ teachers, timetable, on
                             {periods.map(p => <option key={p} value={p}>{`Period ${p}`}</option>)}
                         </select>
                     </div>
+                </div>
+                
+                <div>
+                    <label htmlFor="absence-reason" className="block text-sm font-medium text-gray-700">Reason (Optional)</label>
+                    <textarea
+                        id="absence-reason"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        rows={3}
+                        className="mt-1 block w-full text-sm border-gray-300 focus:outline-none focus:ring-brand-primary focus:border-brand-primary rounded-md"
+                        placeholder="e.g., Personal emergency, sick leave"
+                    />
                 </div>
 
                 <button

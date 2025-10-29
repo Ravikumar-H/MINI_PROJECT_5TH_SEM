@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Teacher, TimetableData, TimetableSlot, User } from '../types';
 import EditSlotModal from './EditSlotModal';
@@ -35,7 +33,7 @@ const AvailabilitySlot: React.FC<{ slot: TimetableSlot; isEditMode: boolean; onC
         : "bg-sky-100 text-sky-800";
 
     return (
-        <div className={`${baseClasses} ${colorClasses}`} onClick={onClick}>
+        <div className={`${baseClasses} ${colorClasses}`} onClick={isEditMode ? onClick : undefined}>
             <p className="font-bold">{slot.subject}</p>
             {!isFree && <p>{slot.class}</p>}
             {isEditMode && 
@@ -55,11 +53,15 @@ const TeacherAvailability: React.FC<TeacherAvailabilityProps> = ({ teachers, tim
     const [editingSlotInfo, setEditingSlotInfo] = useState<{ day: string; period: number; slot: TimetableSlot } | null>(null);
 
      useEffect(() => {
-        // If the user is a teacher, pre-select their name
         if (currentUser.role === 'Teacher') {
             setSelectedTeacher(currentUser.name);
+        } else {
+            // Pre-select the first teacher for other roles for a better initial view
+            if(teachers && teachers.length > 0) {
+                setSelectedTeacher(teachers[0].name);
+            }
         }
-    }, [currentUser]);
+    }, [currentUser, teachers]);
 
     const filteredTeachers = useMemo(() => {
         if (!searchTerm) {
@@ -71,18 +73,15 @@ const TeacherAvailability: React.FC<TeacherAvailabilityProps> = ({ teachers, tim
     }, [searchTerm, teachers]);
 
     const teacherSchedule = useMemo(() => {
-        if (!selectedTeacher) return null;
+        if (!selectedTeacher || !timetable) return null;
         
         const schedule: TimetableData = {};
         days.forEach(day => {
             schedule[day] = periods.map((_, periodIndex) => {
-                const originalSlot = timetable[day][periodIndex];
-                if (originalSlot && originalSlot.teacher === selectedTeacher) {
+                const originalSlot = timetable[day]?.[periodIndex];
+                if (originalSlot?.teacher === selectedTeacher) {
                     return originalSlot;
                 }
-                const slotInThisPeriod = timetable[day][periodIndex];
-                if(slotInThisPeriod.teacher === selectedTeacher) return slotInThisPeriod;
-
                 return { class: 'N/A', subject: 'Free Period', teacher: null };
             });
         });
@@ -107,7 +106,7 @@ const TeacherAvailability: React.FC<TeacherAvailabilityProps> = ({ teachers, tim
                     allSubjects={allSubjects}
                 />
             )}
-            <div className="flex flex-wrap justify-between items-center mb-4">
+            <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
                 <h2 className="text-2xl font-bold text-brand-dark border-b-2 border-brand-secondary pb-2">
                     Teacher Availability
                 </h2>
@@ -194,7 +193,7 @@ const TeacherAvailability: React.FC<TeacherAvailabilityProps> = ({ teachers, tim
 
                         {periods.map((period, periodIndex) => (
                             <React.Fragment key={period}>
-                                <div className="font-bold text-center p-2 text-brand-dark sticky left-0 bg-white/80 backdrop-blur-sm">
+                                <div className="font-bold text-center p-2 text-brand-dark sticky left-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
                                     P{period}
                                 </div>
                                 {daysToDisplay.map(day => (
@@ -204,7 +203,7 @@ const TeacherAvailability: React.FC<TeacherAvailabilityProps> = ({ teachers, tim
                                             isEditMode={isEditMode}
                                             onClick={() => {
                                                 if (isEditMode && canEdit) {
-                                                    setEditingSlotInfo({ day: day, period: period, slot: teacherSchedule[day][periodIndex] });
+                                                    setEditingSlotInfo({ day, period, slot: teacherSchedule[day][periodIndex] });
                                                 }
                                             }}
                                         />

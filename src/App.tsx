@@ -72,7 +72,7 @@ const App: React.FC = () => {
         setNotifications(prev => [newNotification, ...prev]);
     }, []);
 
-    const handleReportAbsence = async (absentTeacherName: string, day: string, period: number) => {
+    const handleReportAbsence = async (absentTeacherName: string, day: string, period: number, reason: string) => {
         setIsLoading(true);
         setError(null);
 
@@ -104,7 +104,8 @@ const App: React.FC = () => {
                 absentTeacherName,
                 day,
                 period,
-                slot: originalSlot
+                slot: originalSlot,
+                reasoning: reason,
             };
             const createdRequest = await apiCreateAbsenceRequest(newRequestData);
             setAbsenceRequests(prev => [...prev, createdRequest]);

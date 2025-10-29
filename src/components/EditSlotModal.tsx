@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import type { TimetableSlot } from '../types';
 
@@ -35,7 +33,6 @@ const EditSlotModal: React.FC<EditSlotModalProps> = ({ slotInfo, onSave, onClose
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         if (!subject || !className) {
-            // Simple validation
             alert('Please fill out both Subject and Class fields.');
             return;
         }

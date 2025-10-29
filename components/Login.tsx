@@ -1,21 +1,28 @@
-
 import React, { useState } from 'react';
 
 interface LoginProps {
-    onLogin: (email: string, pass: string) => boolean;
+    onLogin: (email: string, pass: string) => Promise<boolean>;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        const success = onLogin(email, password);
-        if (!success) {
-            setError('Invalid email or password.');
+        setIsLoading(true);
+        try {
+            const success = await onLogin(email, password);
+            if (!success) {
+                setError('Invalid email or password.');
+            }
+        } catch (err) {
+            setError('An error occurred during login. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
     
@@ -72,9 +79,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         <div>
                             <button
                                 type="submit"
-                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-primary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                disabled={isLoading}
+                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-primary hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-300 disabled:cursor-not-allowed"
                             >
-                                Sign in
+                                {isLoading ? (
+                                    <div className="flex items-center justify-center space-x-2">
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        <span>Signing in...</span>
+                                    </div>
+                                ) : 'Sign in'}
                             </button>
                         </div>
                     </form>

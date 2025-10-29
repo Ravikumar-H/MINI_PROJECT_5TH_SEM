@@ -52,7 +52,7 @@ export interface AbsenceRequest {
     assignedSubstituteTeacherId?: number;
     assignedSubstituteTeacherName?: string;
     timestamp: Date;
-    reasoning?: string; // Optional field for HOD notes or substitute decline reason
+    reasoning?: string; // Reason for the absence provided by the reporter.
 }
 
 
